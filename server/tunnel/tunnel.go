@@ -5,18 +5,21 @@ import (
 	"errors"
 	"io"
 	"net"
+	"sync"
 	"time"
 
-	"github.com/jhonoryza/reprox/server/server"
+	"github.com/jhonoryza/reprox/server/events"
+	"github.com/jhonoryza/reprox/server/tcp"
 )
 
 type tunnel struct {
 	hostname      string
 	maxConsLimit  int
 	eventWriter   io.Writer
-	privateServer server.TCPServer
+	privateServer tcp.TCPServer
 	publicCons    map[uint16]net.Conn // isinya port dan conn
 	initialBuffer map[uint16][]byte   // isinya port dan data
+	eventWriterMx sync.Mutex
 }
 
 func newTunnel(hostname string, conn io.Writer, maxConsLimit int) tunnel {
@@ -125,5 +128,26 @@ func Bind(src net.Conn, dst net.Conn, debug io.Writer) error {
 		time.Sleep(time.Millisecond * 10)
 	}
 
+	return nil
+}
+
+func (t *tunnel) httpConnectionHandler(conn net.Conn, port uint16) error {
+	ip := conn.RemoteAddr().(*net.TCPAddr).IP
+
+	t.eventWriterMx.Lock()
+	defer t.eventWriterMx.Unlock()
+
+	event := events.Event[events.ConnectionReceived]{
+		Data: &events.ConnectionReceived{
+			ClientIP:    ip,
+			ClientPort:  port,
+			RateLimited: false,
+		},
+	}
+	err := event.Write(t.eventWriter)
+	if err != nil {
+		return conn.Close()
+	}
+	t.publicCons[port] = conn
 	return nil
 }

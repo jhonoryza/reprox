@@ -1,15 +1,18 @@
 package tunnel
 
-import "io"
+import (
+	"io"
+	"net"
+)
 
 const DefaultHttpPort = 80
 
-type HttpTunnel struct {
+type HTTPTunnel struct {
 	tunnel
 }
 
-func NewHTTP(hostname string, conn io.Writer, maxConsLimit int) (*HttpTunnel, error) {
-	t := &HttpTunnel{
+func NewHTTP(hostname string, conn io.Writer, maxConsLimit int) (*HTTPTunnel, error) {
+	t := &HTTPTunnel{
 		tunnel: newTunnel(hostname, conn, maxConsLimit),
 	}
 
@@ -21,14 +24,20 @@ func NewHTTP(hostname string, conn io.Writer, maxConsLimit int) (*HttpTunnel, er
 	return t, err
 }
 
-func (t *HttpTunnel) Open() {
+func (t *HTTPTunnel) Open() {
 	go t.privateServer.Start(t.privateConnectionHandler)
 }
 
-func (t *HttpTunnel) Protocol() string {
+func (t *HTTPTunnel) Protocol() string {
 	return "http"
 }
 
-func (t *HttpTunnel) PublicServerPort() uint16 {
+func (t *HTTPTunnel) PublicServerPort() uint16 {
 	return DefaultHttpPort
+}
+
+func (t *HTTPTunnel) HttpConnectionHandler(conn net.Conn, buffer []byte) error {
+	port := uint16(conn.RemoteAddr().(*net.TCPAddr).Port)
+	t.initialBuffer[port] = buffer
+	return t.httpConnectionHandler(conn, port)
 }

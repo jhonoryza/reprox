@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/jhonoryza/reprox/server/config"
 	"github.com/jhonoryza/reprox/server/events"
-	"github.com/jhonoryza/reprox/server/server"
+	"github.com/jhonoryza/reprox/server/tcp"
 	"github.com/jhonoryza/reprox/server/tunnel"
 )
 
@@ -16,28 +17,36 @@ const dateFormat = "2006/01/02 15:04:05"
 
 type Reprox struct {
 	config      config.Config
-	eventServer server.TCPServer
+	eventServer tcp.TCPServer // handle request from client app
+	httpServer  tcp.TCPServer // handle request from http
 	cnameMap    map[string]string
-	httpTunnels map[string]*tunnel.HttpTunnel
+	httpTunnels map[string]*tunnel.HTTPTunnel
 }
 
 func (r *Reprox) Init(conf config.Config) error {
 	r.config = conf
 
-	// Membuka listener TCP pada port yang ditentukan
+	// Membuka listener event server
 	err := r.eventServer.Init(conf.EventServerPort, "reprox_event_server")
 	if err != nil {
 		return err
 	}
 
+	// Membuka listener http server
+	err = r.httpServer.Init(conf.HttpServerPort, "reprox_http_server")
+	if err != nil {
+		return err
+	}
+
 	r.cnameMap = make(map[string]string)
-	r.httpTunnels = make(map[string]*tunnel.HttpTunnel)
+	r.httpTunnels = make(map[string]*tunnel.HTTPTunnel)
 
 	return nil
 }
 
 func (r *Reprox) Start() {
 	go r.eventServer.Start(r.serveEventConn)
+	go r.httpServer.Start(r.serveHttpConn)
 }
 
 func (j *Reprox) serveEventConn(conn net.Conn) error {
@@ -118,6 +127,25 @@ func (j *Reprox) serveEventConn(conn net.Conn) error {
 	}
 	fmt.Printf("%s [tunnel-closed] %s\n", time.Now().Format(dateFormat), tunnelId)
 	return nil
+}
+
+func (r *Reprox) serveHttpConn(conn net.Conn) error {
+	_ = conn.SetReadDeadline(time.Now().Add(time.Second * 3))
+	host, buffer, err := parseHost(conn)
+	if err != nil || host == "" {
+		writeResponse(conn, 400, "Bad Request", "Bad Request")
+		return nil
+	}
+	tunnelHost, ok := r.cnameMap[host]
+	if ok && tunnelHost != "" {
+		host = tunnelHost
+	}
+	host = strings.ToLower(host)
+	tunnel, found := r.httpTunnels[host]
+	if !found {
+		writeResponse(conn, 400, "Not Found", "tunnel not found")
+	}
+	return tunnel.HttpConnectionHandler(conn, buffer)
 }
 
 func (r *Reprox) Stop() error {
