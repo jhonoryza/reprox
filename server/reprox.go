@@ -166,6 +166,7 @@ func (r *Reprox) serveHttpConn(conn net.Conn) error {
 	tunnel, found := r.httpTunnels[host]
 	if !found {
 		writeResponse(conn, 400, "Not Found", "tunnel not found")
+		return fmt.Errorf("unknown host requested %s", host)
 	}
 	return tunnel.HttpConnectionHandler(conn, buffer)
 }

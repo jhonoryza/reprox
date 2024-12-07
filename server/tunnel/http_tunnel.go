@@ -2,7 +2,6 @@ package tunnel
 
 import (
 	"io"
-	"log"
 	"net"
 )
 
@@ -39,9 +38,6 @@ func (t *HTTPTunnel) PublicServerPort() uint16 {
 
 func (t *HTTPTunnel) HttpConnectionHandler(conn net.Conn, buffer []byte) error {
 	port := uint16(conn.RemoteAddr().(*net.TCPAddr).Port)
-
-	log.Printf("HttpConnectionHandler port %d", port)
-	log.Printf("initial buffer %v", buffer)
 
 	t.initialBuffer[port] = buffer
 	return t.httpConnectionHandler(conn)
