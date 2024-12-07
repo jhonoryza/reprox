@@ -1,6 +1,7 @@
 package tcp
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net"
@@ -19,6 +20,25 @@ type TCPServer struct {
  */
 func (t *TCPServer) Init(port uint16, title string) error {
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		return err
+	}
+	t.title = title
+	t.listener = ln
+	return nil
+}
+
+/*
+ * menginisialisasi server TCP with TLS
+ */
+func (t *TCPServer) InitTLS(port uint16, title, certFile, keyFile string) error {
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return err
+	}
+	config := tls.Config{Certificates: []tls.Certificate{cert}}
+
+	ln, err := tls.Listen("tcp", fmt.Sprintf(":%d", port), &config)
 	if err != nil {
 		return err
 	}

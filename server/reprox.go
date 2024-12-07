@@ -19,6 +19,7 @@ type Reprox struct {
 	config      config.Config
 	eventServer tcp.TCPServer // handle request from client app
 	httpServer  tcp.TCPServer // handle request from http
+	httpsServer tcp.TCPServer // handle request from https
 	cnameMap    map[string]string
 	httpTunnels map[string]*tunnel.HTTPTunnel
 }
@@ -38,6 +39,19 @@ func (r *Reprox) Init(conf config.Config) error {
 		return err
 	}
 
+	if conf.EnableTLS {
+		// Membuka listener https server
+		err = r.httpsServer.InitTLS(
+			conf.HttpServerPort,
+			"reprox_http_server",
+			conf.TLSCertFile,
+			conf.TLSKeyFile,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
 	r.cnameMap = make(map[string]string)
 	r.httpTunnels = make(map[string]*tunnel.HTTPTunnel)
 
@@ -47,6 +61,10 @@ func (r *Reprox) Init(conf config.Config) error {
 func (r *Reprox) Start() {
 	go r.eventServer.Start(r.serveEventConn)
 	go r.httpServer.Start(r.serveHttpConn)
+
+	if r.config.EnableTLS {
+		go r.httpsServer.Start(r.serveHttpConn)
+	}
 }
 
 func (j *Reprox) serveEventConn(conn net.Conn) error {
