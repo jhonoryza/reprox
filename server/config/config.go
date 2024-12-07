@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"log"
 	"os"
 	"strconv"
 )
@@ -19,20 +20,31 @@ type Config struct {
 }
 
 func (c *Config) Load() error {
-	httpPort, err := strconv.Atoi(os.Getenv("HTTP_PORT"))
-	if err != nil {
-		httpPort = 80
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = "80"
 	}
-	httpsPort, err := strconv.Atoi(os.Getenv("HTTPS_PORT"))
-	if err != nil {
-		httpsPort = 443
+	httpsPort := os.Getenv("HTTPS_PORT")
+	if httpsPort == "" {
+		httpsPort = "443"
 	}
+	httpPortInt, err := strconv.Atoi(httpPort)
+	if err != nil {
+		return err
+	}
+	httpsPortInt, err := strconv.Atoi(httpsPort)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("%d %d", httpPortInt, httpsPortInt)
+
 	c.DomainName = os.Getenv("DOMAIN")
 	c.MaxTunnelsPerUser = 4
 	c.MaxConsPerTunnel = 24
 	c.EventServerPort = 4321
-	c.HttpServerPort = uint16(httpPort)
-	c.HttpsServerPort = uint16(httpsPort)
+	c.HttpServerPort = uint16(httpPortInt)
+	c.HttpsServerPort = uint16(httpsPortInt)
 	c.TLSCertFile = os.Getenv("TLS_PATH_CERT")
 	c.TLSKeyFile = os.Getenv("TLS_PATH_KEY")
 	c.EnableTLS = true
@@ -42,7 +54,6 @@ func (c *Config) Load() error {
 	}
 
 	if c.TLSKeyFile == "" || c.TLSCertFile == "" {
-		// return errors.New("TLS key/cert file is missing")
 		c.EnableTLS = false
 	}
 

@@ -131,8 +131,9 @@ func Bind(src net.Conn, dst net.Conn, debug io.Writer) error {
 	return nil
 }
 
-func (t *tunnel) httpConnectionHandler(conn net.Conn, port uint16) error {
+func (t *tunnel) httpConnectionHandler(conn net.Conn) error {
 	ip := conn.RemoteAddr().(*net.TCPAddr).IP
+	port := uint16(conn.RemoteAddr().(*net.TCPAddr).Port)
 
 	t.eventWriterMx.Lock()
 	defer t.eventWriterMx.Unlock()

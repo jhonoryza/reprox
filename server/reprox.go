@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"strings"
 	"time"
@@ -26,6 +27,8 @@ type Reprox struct {
 
 func (r *Reprox) Init(conf config.Config) error {
 	r.config = conf
+	r.cnameMap = make(map[string]string)
+	r.httpTunnels = make(map[string]*tunnel.HTTPTunnel)
 
 	// Membuka listener event server
 	err := r.eventServer.Init(conf.EventServerPort, "reprox_event_server")
@@ -52,8 +55,7 @@ func (r *Reprox) Init(conf config.Config) error {
 		}
 	}
 
-	r.cnameMap = make(map[string]string)
-	r.httpTunnels = make(map[string]*tunnel.HTTPTunnel)
+	log.Println("reprox init ok")
 
 	return nil
 }
@@ -65,9 +67,11 @@ func (r *Reprox) Start() {
 	if r.config.EnableTLS {
 		go r.httpsServer.Start(r.serveHttpConn)
 	}
+
+	log.Println("reprox start ok")
 }
 
-func (j *Reprox) serveEventConn(conn net.Conn) error {
+func (r *Reprox) serveEventConn(conn net.Conn) error {
 	defer conn.Close()
 
 	var event events.Event[events.TunnelRequested]
@@ -89,17 +93,17 @@ func (j *Reprox) serveEventConn(conn net.Conn) error {
 	if err := validate(request.Subdomain); err != nil {
 		return events.WriteError(conn, "invalid subdomain %s: %s", request.Subdomain, err.Error())
 	}
-	hostname := fmt.Sprintf("%s.%s", request.Subdomain, j.config.DomainName)
-	if _, ok := j.httpTunnels[hostname]; ok {
+	hostname := fmt.Sprintf("%s.%s", request.Subdomain, r.config.DomainName)
+	if _, ok := r.httpTunnels[hostname]; ok {
 		return events.WriteError(conn, "subdomain is busy: %s, try another one", request.Subdomain)
 	}
 	cname := request.CanonName
-	if _, ok := j.cnameMap[cname]; ok && cname != "" {
+	if _, ok := r.cnameMap[cname]; ok && cname != "" {
 		return events.WriteError(conn, "cname is busy: %s, try another one", request.CanonName)
 	}
 
 	var t tunnel.Tunnel
-	var maxConsLimit = j.config.MaxConsPerTunnel
+	var maxConsLimit = r.config.MaxConsPerTunnel
 
 	switch request.Protocol {
 	case events.HTTP:
@@ -107,10 +111,10 @@ func (j *Reprox) serveEventConn(conn net.Conn) error {
 		if err != nil {
 			return events.WriteError(conn, "failed to create http tunnel", err.Error())
 		}
-		j.cnameMap[cname] = hostname
-		j.httpTunnels[hostname] = tn
-		defer delete(j.cnameMap, cname)
-		defer delete(j.httpTunnels, hostname)
+		r.cnameMap[cname] = hostname
+		r.httpTunnels[hostname] = tn
+		defer delete(r.cnameMap, cname)
+		defer delete(r.httpTunnels, hostname)
 		t = tn
 	}
 
@@ -171,6 +175,20 @@ func (r *Reprox) Stop() error {
 	if err != nil {
 		return err
 	}
+
+	err = r.httpServer.Stop()
+	if err != nil {
+		return err
+	}
+
+	if r.config.EnableTLS {
+		err = r.httpsServer.Stop()
+		if err != nil {
+			return err
+		}
+	}
+
+	log.Println("reprox stop ok")
 
 	return nil
 }
