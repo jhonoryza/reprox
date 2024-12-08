@@ -26,7 +26,9 @@ ENV DOMAIN=labstack.myaddr.io
 ENV DOMAIN_EVENT=labstack.myaddr.io:4321
 
 # Expose default application port
-EXPOSE 8080
+EXPOSE 80
+EXPOSE 443
+EXPOSE 4321
 
 # Run the compiled server
 CMD ["./server"]
