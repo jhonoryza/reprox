@@ -13,7 +13,7 @@ ARG GOARCH
 RUN GOOS=$GOOS GOARCH=$GOARCH go build -ldflags '-s -w' -o reprox_server server/*.go
 
 # Create a minimal runtime image
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
 # Set the working directory
 WORKDIR /app/
