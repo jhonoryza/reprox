@@ -55,7 +55,7 @@ if you dont specified tls file the https will be disabled automatically
 ./build.server.sh
 ```
 
-check bin folder and choose the correct binary according to OS
+check bin folder and choose the correct binary according to your arch
 
 file is prefix with `server-`
 
@@ -65,7 +65,7 @@ file is prefix with `server-`
 ./build.client.sh
 ```
 
-check bin folder and choose the correct binary according to OS
+check bin folder and choose the correct binary according to your arch
 
 file is prefix with `client-`
 
@@ -77,7 +77,18 @@ file is prefix with `client-`
 
 before using server app make sure the required environment variables is exported
 
-replace arch with `mac, linux or windows`
+replace arch with this
+
+| arch          | description         |
+| ------------- | ------------------- |
+| linux-386     | linux 32bit         |
+| linux-amd64   | linux 64bit         |
+| linux-arm     | linux arm 32bit     |
+| linux-arm64   | linux arm 64bit     |
+| windows-386   | windows 32bit       |
+| windows-amd64 | windows 64bit       |
+| darwin-amd64  | mac with intel chip |
+| darwin-arm64  | mac with arm chip   |
 
 ```bash
 ./bin/server-{arch}
@@ -87,7 +98,24 @@ replace arch with `mac, linux or windows`
 
 before using client app make sure the required environment variables is exported
 
-replace arch with `mac, linux or windows`
+replace arch with this
+
+| arch          | description         |
+| ------------- | ------------------- |
+| linux-386     | linux 32bit         |
+| linux-amd64   | linux 64bit         |
+| linux-arm     | linux arm 32bit     |
+| linux-arm64   | linux arm 64bit     |
+| windows-386   | windows 32bit       |
+| windows-amd64 | windows 64bit       |
+| darwin-amd64  | mac with intel chip |
+| darwin-arm64  | mac with arm chip   |
+
+#### command :
+
+```bash
+./bin/client-{arch} option
+```
 
 | option | description                  |
 | ------ | ---------------------------- |
@@ -120,7 +148,7 @@ Exposing directory static files using built-in HTTP Server
 ./bin/client-{arch} serve --dir . -s subdomain
 ```
 
-Press Ctrl+C to stop it
+Press Ctrl+C to stop
 
 ## Security
 
