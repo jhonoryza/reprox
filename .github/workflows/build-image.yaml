@@ -37,7 +37,6 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/reprox:linux-${{ matrix.arch }}
-          platforms: linux/${{ matrix.arch }}
           build-args: |
             GOOS=linux
             GOARCH=${{ matrix.arch }}
