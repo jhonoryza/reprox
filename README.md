@@ -30,7 +30,7 @@ example :
 
 ```
 export DOMAIN=labstack.myaddr.io
-export DOMAIN_EVENT=event.labstack.myaddr.io:4321
+export DOMAIN_EVENT=labstack.myaddr.io:4321
 ```
 
 this is an optional environment variable
@@ -73,34 +73,51 @@ file is prefix with `client-`
 
 - every time the environment is changed, you need to recompile both apps
 
-### Client App Usage
+### Server App Usage
 
-port 3000 is your local app
+before using server app make sure the required environment variables is exported
 
-Replace 3000 with the port you want to expose public
-
-and `subdomain` with subdomain
+replace arch with `mac, linux or windows`
 
 ```bash
-./bin/client-mac http 3000 -s subdomain
+./bin/server-{arch}
+```
+
+### Client App Usage
+
+before using client app make sure the required environment variables is exported
+
+replace arch with `mac, linux or windows`
+
+| option | description                  |
+| ------ | ---------------------------- |
+| -p     | local port                   |
+| -s     | subdomain                    |
+| -cname | different domain using CNAME |
+| --dir  | directory path               |
+
+For exposing any HTTP servers
+
+```bash
+./bin/client-{arch} http -p 3000 -s subdomain
 ```
 
 For exposing any TCP servers, such as SSH
 
 ```bash
-./bin/client-mac tcp 22 -s subdomain
+./bin/client-{arch} tcp -p 22 -s subdomain
 ```
 
-Serve on a different domain using CNAME
+Exposing on a different domain
 
 ```bash
-./bin/client-mac http 3000 --cname example.com
+./bin/client-{arch} http -p 3000 -cname example.com
 ```
 
-Serve static files using built-in HTTP Server
+Exposing directory static files using built-in HTTP Server
 
 ```bash
-./bin/client-mac serve . -s subdomain
+./bin/client-{arch} serve --dir . -s subdomain
 ```
 
 Press Ctrl+C to stop it
