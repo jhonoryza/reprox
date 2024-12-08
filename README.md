@@ -154,6 +154,10 @@ Press Ctrl+C to stop
 
 - [https://hub.docker.com/repository/docker/jhonoryza/reprox](https://hub.docker.com/repository/docker/jhonoryza/reprox)
 
+```bash
+docker run --rm --network host -d jhonoryza/reprox:linux-amd64
+```
+
 ## Security
 
 If you discover any security related issues, please create an issue.
