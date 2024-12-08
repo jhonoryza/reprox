@@ -23,12 +23,14 @@ type Reprox struct {
 	httpsServer tcp.TCPServer // handle request from https
 	cnameMap    map[string]string
 	httpTunnels map[string]*tunnel.HTTPTunnel
+	tcpTunnels  map[uint16]*tunnel.TCPTunnel
 }
 
 func (r *Reprox) Init(conf config.Config) error {
 	r.config = conf
 	r.cnameMap = make(map[string]string)
 	r.httpTunnels = make(map[string]*tunnel.HTTPTunnel)
+	r.tcpTunnels = make(map[uint16]*tunnel.TCPTunnel)
 
 	// Membuka listener event server
 	err := r.eventServer.Init(conf.EventServerPort, "reprox_event_server")
@@ -115,6 +117,14 @@ func (r *Reprox) serveEventConn(conn net.Conn) error {
 		r.httpTunnels[hostname] = tn
 		defer delete(r.cnameMap, cname)
 		defer delete(r.httpTunnels, hostname)
+		t = tn
+	case events.TCP:
+		tn, err := tunnel.NewTCP(hostname, conn, maxConsLimit)
+		if err != nil {
+			return events.WriteError(conn, "failed to create tcp tunnel", err.Error())
+		}
+		r.tcpTunnels[tn.PublicServerPort()] = tn
+		defer delete(r.tcpTunnels, tn.PublicServerPort())
 		t = tn
 	}
 
