@@ -8,47 +8,39 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jhonoryza/reprox/server/config"
-	"github.com/jhonoryza/reprox/server/events"
-	"github.com/jhonoryza/reprox/server/tcp"
-	"github.com/jhonoryza/reprox/server/tunnel"
+	"github.com/jhonoryza/reprox/package/events"
 )
 
-const dateFormat = "2006/01/02 15:04:05"
-
 type Reprox struct {
-	config      config.Config
-	eventServer tcp.TCPServer // handle request from client app
-	httpServer  tcp.TCPServer // handle request from http
-	httpsServer tcp.TCPServer // handle request from https
-	cnameMap    map[string]string
-	httpTunnels map[string]*tunnel.HTTPTunnel
-	tcpTunnels  map[uint16]*tunnel.TCPTunnel
+	config   Config
+	tcpEvent TCPServer              // handle request, from client app
+	tcpHttp  TCPServer              // handle request, from http
+	tcpHttps TCPServer              // handle request, from https
+	cnameMap map[string]string      // mapping cname, example.com : subdomain.domain
+	httpMap  map[string]*HTTPTunnel // mapping http, subdomain.domain : tunnel http
+	tcpMap   map[uint16]*TCPTunnel  // mapping tcp, public port : tunnel tcp
 }
 
-func (r *Reprox) Init(conf config.Config) error {
+func (r *Reprox) Load(conf Config) error {
 	r.config = conf
 	r.cnameMap = make(map[string]string)
-	r.httpTunnels = make(map[string]*tunnel.HTTPTunnel)
-	r.tcpTunnels = make(map[uint16]*tunnel.TCPTunnel)
+	r.httpMap = make(map[string]*HTTPTunnel)
+	r.tcpMap = make(map[uint16]*TCPTunnel)
 
-	// Membuka listener event server
-	err := r.eventServer.Init(conf.EventServerPort, "reprox_event_server")
+	err := r.tcpEvent.Listen(conf.EventServerPort, "reprox_event_server")
 	if err != nil {
 		return err
 	}
 
-	// Membuka listener http server
-	err = r.httpServer.Init(conf.HttpServerPort, "reprox_http_server")
+	err = r.tcpHttp.Listen(conf.HttpServerPort, "reprox_http_server")
 	if err != nil {
 		return err
 	}
 
 	if conf.EnableTLS {
-		// Membuka listener https server
-		err = r.httpsServer.InitTLS(
-			conf.HttpServerPort,
-			"reprox_http_server",
+		err = r.tcpHttps.ListenTLS(
+			conf.HttpsServerPort,
+			"reprox_https_server",
 			conf.TLSCertFile,
 			conf.TLSKeyFile,
 		)
@@ -57,23 +49,41 @@ func (r *Reprox) Init(conf config.Config) error {
 		}
 	}
 
-	log.Println("reprox init ok")
+	log.Println("reprox load ok")
 
 	return nil
 }
 
 func (r *Reprox) Start() {
-	go r.eventServer.Start(r.serveEventConn)
-	go r.httpServer.Start(r.serveHttpConn)
+	go r.tcpEvent.ListenerAccept(r.serveEvent)
+	go r.tcpHttp.ListenerAccept(r.serveHttp)
 
 	if r.config.EnableTLS {
-		go r.httpsServer.Start(r.serveHttpConn)
+		go r.tcpHttps.ListenerAccept(r.serveHttp)
 	}
 
 	log.Println("reprox start ok")
 }
 
-func (r *Reprox) serveEventConn(conn net.Conn) error {
+func (r *Reprox) Stop() error {
+	err := r.tcpEvent.ListenerStop()
+	if err != nil {
+		return err
+	}
+
+	err = r.tcpHttp.ListenerStop()
+	if err != nil {
+		return err
+	}
+
+	log.Println("reprox stop ok")
+
+	return nil
+}
+
+const dateFormat = "2006/01/02 15:04:05"
+
+func (r *Reprox) serveEvent(conn net.Conn) error {
 	defer conn.Close()
 
 	var event events.Event[events.TunnelRequested]
@@ -96,7 +106,7 @@ func (r *Reprox) serveEventConn(conn net.Conn) error {
 		return events.WriteError(conn, "invalid subdomain %s: %s", request.Subdomain, err.Error())
 	}
 	hostname := fmt.Sprintf("%s.%s", request.Subdomain, r.config.DomainName)
-	if _, ok := r.httpTunnels[hostname]; ok {
+	if _, ok := r.httpMap[hostname]; ok {
 		return events.WriteError(conn, "subdomain is busy: %s, try another one", request.Subdomain)
 	}
 	cname := request.CanonName
@@ -104,38 +114,31 @@ func (r *Reprox) serveEventConn(conn net.Conn) error {
 		return events.WriteError(conn, "cname is busy: %s, try another one", request.CanonName)
 	}
 
-	var t tunnel.Tunnel
-	var maxConsLimit = r.config.MaxConsPerTunnel
-
-	switch request.Protocol {
-	case events.HTTP:
-		tn, err := tunnel.NewHTTP(hostname, conn, maxConsLimit)
-		if err != nil {
-			return events.WriteError(conn, "failed to create http tunnel", err.Error())
-		}
-		r.cnameMap[cname] = hostname
-		r.httpTunnels[hostname] = tn
-		defer delete(r.cnameMap, cname)
-		defer delete(r.httpTunnels, hostname)
-		t = tn
-	case events.TCP:
-		tn, err := tunnel.NewTCP(hostname, conn, maxConsLimit)
-		if err != nil {
-			return events.WriteError(conn, "failed to create tcp tunnel", err.Error())
-		}
-		r.tcpTunnels[tn.PublicServerPort()] = tn
-		defer delete(r.tcpTunnels, tn.PublicServerPort())
-		t = tn
+	if request.Protocol == events.TCP {
+		return r.createNewTCPTunnel(hostname, conn)
 	}
 
-	t.Open()
-	defer t.Close()
+	return r.createNewHTTPTunnel(hostname, cname, conn)
+}
+
+func (r *Reprox) createNewHTTPTunnel(hostname string, cname string, conn net.Conn) error {
+	tn, err := NewHTTP(hostname, conn)
+	if err != nil {
+		return events.WriteError(conn, "failed to create http tunnel", err.Error())
+	}
+	r.cnameMap[cname] = hostname
+	r.httpMap[hostname] = tn
+	defer delete(r.cnameMap, cname)
+	defer delete(r.httpMap, hostname)
+
+	tn.Open()
+	defer tn.Close()
 	opened := events.Event[events.TunnelOpened]{
 		Data: &events.TunnelOpened{
-			Hostname:      t.Hostname(),
-			Protocol:      t.Protocol(),
-			PublicServer:  t.PublicServerPort(),
-			PrivateServer: t.PrivateServerPort(),
+			Hostname:      tn.Hostname(),
+			Protocol:      tn.Protocol(),
+			PublicServer:  tn.PublicServerPort(),
+			PrivateServer: tn.PrivateServerPort(),
 		},
 	}
 
@@ -144,7 +147,7 @@ func (r *Reprox) serveEventConn(conn net.Conn) error {
 		return err
 	}
 
-	tunnelId := fmt.Sprintf("%s:%d", t.Hostname(), t.PublicServerPort())
+	tunnelId := fmt.Sprintf("%s:%d", tn.Hostname(), tn.PublicServerPort())
 	fmt.Printf("%s [tunnel-opened] %s\n", time.Now().Format(dateFormat), tunnelId)
 
 	buffer := make([]byte, 8)
@@ -161,7 +164,48 @@ func (r *Reprox) serveEventConn(conn net.Conn) error {
 	return nil
 }
 
-func (r *Reprox) serveHttpConn(conn net.Conn) error {
+func (r *Reprox) createNewTCPTunnel(hostname string, conn net.Conn) error {
+	tn, err := NewTCP(hostname, conn)
+	if err != nil {
+		return events.WriteError(conn, "failed to create tcp tunnel", err.Error())
+	}
+	r.tcpMap[tn.PublicServerPort()] = tn
+	defer delete(r.tcpMap, tn.PublicServerPort())
+
+	tn.Open()
+	defer tn.Close()
+	opened := events.Event[events.TunnelOpened]{
+		Data: &events.TunnelOpened{
+			Hostname:      tn.Hostname(),
+			Protocol:      tn.Protocol(),
+			PublicServer:  tn.PublicServerPort(),
+			PrivateServer: tn.PrivateServerPort(),
+		},
+	}
+
+	err = opened.Write(conn)
+	if err != nil {
+		return err
+	}
+
+	tunnelId := fmt.Sprintf("%s:%d", tn.Hostname(), tn.PublicServerPort())
+	fmt.Printf("%s [tunnel-opened] %s\n", time.Now().Format(dateFormat), tunnelId)
+
+	buffer := make([]byte, 8)
+
+	// wait until connection is closed
+	for {
+		_ = conn.SetReadDeadline(time.Now().Add(time.Minute))
+		_, err := conn.Read(buffer)
+		if err == io.EOF {
+			break
+		}
+	}
+	fmt.Printf("%s [tunnel-closed] %s\n", time.Now().Format(dateFormat), tunnelId)
+	return nil
+}
+
+func (r *Reprox) serveHttp(conn net.Conn) error {
 	_ = conn.SetReadDeadline(time.Now().Add(time.Second * 3))
 	host, buffer, err := parseHost(conn)
 	if err != nil || host == "" {
@@ -173,33 +217,10 @@ func (r *Reprox) serveHttpConn(conn net.Conn) error {
 		host = tunnelHost
 	}
 	host = strings.ToLower(host)
-	tunnel, found := r.httpTunnels[host]
+	tunnel, found := r.httpMap[host]
 	if !found {
 		writeResponse(conn, 400, "Not Found", "tunnel not found")
 		return fmt.Errorf("unknown host requested %s", host)
 	}
-	return tunnel.HttpConnectionHandler(conn, buffer)
-}
-
-func (r *Reprox) Stop() error {
-	err := r.eventServer.Stop()
-	if err != nil {
-		return err
-	}
-
-	err = r.httpServer.Stop()
-	if err != nil {
-		return err
-	}
-
-	if r.config.EnableTLS {
-		err = r.httpsServer.Stop()
-		if err != nil {
-			return err
-		}
-	}
-
-	log.Println("reprox stop ok")
-
-	return nil
+	return tunnel.publicHandler(conn, buffer)
 }
