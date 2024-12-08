@@ -6,8 +6,8 @@ import (
 )
 
 type Config struct {
-	Domain string
-	Events string
+	Domain string // remote server domain
+	Events string // remote server domain with event port
 }
 
 func (c *Config) Load() error {

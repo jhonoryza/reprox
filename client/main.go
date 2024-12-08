@@ -15,7 +15,7 @@ import (
 func main() {
 	log.SetFlags(0)
 
-	if len(os.Args) < 1 {
+	if len(os.Args) < 2 {
 		log.Println("no command specified")
 		printHelp()
 	}

@@ -1,4 +1,4 @@
-package config
+package main
 
 import (
 	"errors"
@@ -8,15 +8,13 @@ import (
 )
 
 type Config struct {
-	DomainName        string
-	MaxTunnelsPerUser int
-	MaxConsPerTunnel  int
-	EventServerPort   uint16
-	HttpServerPort    uint16
-	HttpsServerPort   uint16
-	TLSCertFile       string
-	TLSKeyFile        string
-	EnableTLS         bool
+	DomainName      string
+	EventServerPort uint16
+	HttpServerPort  uint16
+	HttpsServerPort uint16
+	TLSCertFile     string
+	TLSKeyFile      string
+	EnableTLS       bool
 }
 
 func (c *Config) Load() error {
@@ -37,11 +35,7 @@ func (c *Config) Load() error {
 		return err
 	}
 
-	log.Printf("%d %d", httpPortInt, httpsPortInt)
-
 	c.DomainName = os.Getenv("DOMAIN")
-	c.MaxTunnelsPerUser = 4
-	c.MaxConsPerTunnel = 24
 	c.EventServerPort = 4321
 	c.HttpServerPort = uint16(httpPortInt)
 	c.HttpsServerPort = uint16(httpsPortInt)
@@ -56,6 +50,9 @@ func (c *Config) Load() error {
 	if c.TLSKeyFile == "" || c.TLSCertFile == "" {
 		c.EnableTLS = false
 	}
+
+	log.Printf("http:%d https:%d event:%d \n", httpPortInt, httpsPortInt, c.EventServerPort)
+	log.Printf("TLS enabled: %v", c.EnableTLS)
 
 	return nil
 }

@@ -7,19 +7,19 @@ import (
 	"net"
 	"strings"
 
-	"github.com/jhonoryza/reprox/server/events"
-	"github.com/jhonoryza/reprox/server/tunnel"
+	"github.com/jhonoryza/reprox/package/events"
+	"github.com/jhonoryza/reprox/package/utils"
 )
 
 type Client struct {
 	config    Config
-	protocol  string
+	protocol  string // http or tcp
 	subdomain string
-	cname     string
+	cname     string // example.com
 
-	localServer  string
-	remoteServer string
-	publicServer string
+	localServer  string // localhost:localport
+	remoteServer string // remote domain private:remote port private
+	publicServer string // remote domain public: remote port public
 }
 
 func (c *Client) Start(port uint16) {
@@ -92,6 +92,6 @@ func (c *Client) handleEvent(event events.ConnectionReceived) {
 	binary.LittleEndian.PutUint16(buffer, event.ClientPort)
 	remoteConn.Write(buffer)
 
-	go tunnel.Bind(localConn, remoteConn, nil)
-	tunnel.Bind(remoteConn, localConn, nil)
+	go utils.Bind(localConn, remoteConn, nil)
+	utils.Bind(remoteConn, localConn, nil)
 }
