@@ -15,39 +15,35 @@ import (
 func main() {
 	log.SetFlags(0)
 
-	if len(os.Args) < 2 {
+	if len(os.Args) < 1 {
 		log.Println("no command specified")
 		printHelp()
 	}
 
 	switch os.Args[1] {
-	case "help", "--help":
+	case "help", "--help", "-h", "-help":
 		printHelp()
 	}
 
-	if len(os.Args) < 3 {
-		log.Println("no arg supplied")
-		printHelp()
-	}
+	protocol := ""
+	command := os.Args[1]
+	flags := parseFlags(os.Args[2:])
 
-	protocol, port := "", 0
-	command, arg := os.Args[1], os.Args[2]
-	flags := parseFlags(os.Args[3:])
-
-	// parse protocol and port from command
 	switch command {
 	case "serve":
-		protocol, port = handleServe(arg)
+		if flags.dir == "" {
+			log.Fatalf("required --dir path")
+		}
+		proto, port := handleServe(flags.dir)
+		flags.port = uint16(port)
+		protocol = proto
 	case "http", "tcp":
 		protocol = command
-		port, _ = strconv.Atoi(arg)
+		if flags.port <= 0 {
+			log.Fatalf("invalid port or port not specified")
+		}
 	default:
 		log.Fatalf("unknown command: %s, client --help", command)
-	}
-
-	// validate invalid port number
-	if port <= 0 {
-		log.Fatalf("port number must be positive int")
 	}
 
 	// load client config
@@ -65,7 +61,7 @@ func main() {
 		cname:     flags.cname,
 	}
 
-	go client.Start(uint16(port))
+	go client.Start(flags.port)
 
 	// terminate if interrupt ctrl+c detected
 	signalChan := make(chan os.Signal, 1)
@@ -76,9 +72,10 @@ func main() {
 func printHelp() {
 	fmt.Printf("Usage: client <command> [arguments]\n\n")
 	fmt.Println("Commands:")
-	fmt.Println("  http  <port>                Start an HTTP tunnel on the specified port")
-	fmt.Println("  http  <port> -s <subdomain> Start an HTTP tunnel with a custom subdomain")
-	fmt.Println("  serve <dir>                 Serve files with built-in Http Server")
+	fmt.Println("  http -p <port>                Start an HTTP tunnel with a random subdomain")
+	fmt.Println("  http -p <port> -s <subdomain> Start an HTTP tunnel with a custom subdomain")
+	fmt.Println("  tcp -p <port> -s <subdomain> Start an HTTP tunnel with a custom subdomain")
+	fmt.Println("  serve -dir <dir>                 Serve files with built-in Http Server")
 	fmt.Println("  --help                      Show this help message")
 	os.Exit(0)
 }
@@ -86,6 +83,8 @@ func printHelp() {
 type Flags struct {
 	cname     string
 	subdomain string
+	port      uint16
+	dir       string
 }
 
 func parseFlags(args []string) Flags {
@@ -96,6 +95,14 @@ func parseFlags(args []string) Flags {
 			flags.subdomain = args[i+1]
 		case "-c", "-cname", "--cname":
 			flags.cname = args[i+1]
+		case "-p", "--port", "-port":
+			port, err := strconv.Atoi(args[i+1])
+			if err != nil {
+				log.Fatalf("invalid port %v", err)
+			}
+			flags.port = uint16(port)
+		case "-dir", "--dir":
+			flags.dir = args[i+1]
 		}
 	}
 	return flags
