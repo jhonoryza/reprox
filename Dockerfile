@@ -31,4 +31,4 @@ EXPOSE 443
 EXPOSE 4321
 
 # Run the compiled server
-CMD ["./server"]
+CMD ["server"]
