@@ -1,5 +1,5 @@
 # Use Go official image as a builder
-FROM golang:1.22 as builder
+FROM golang:1.22 AS builder
 
 # Set the working directory
 WORKDIR /app
@@ -10,7 +10,7 @@ COPY . .
 # Build the Go application for specified architecture
 ARG GOOS
 ARG GOARCH
-RUN GOOS=$GOOS GOARCH=$GOARCH go build -ldflags '-s -w' -o server server/*.go
+RUN GOOS=$GOOS GOARCH=$GOARCH go build -ldflags '-s -w' -o bin/server server/*.go
 
 # Create a minimal runtime image
 FROM alpine:latest
@@ -19,7 +19,7 @@ FROM alpine:latest
 WORKDIR /root/
 
 # Copy the compiled binary from the builder
-COPY --from=builder /app/server .
+COPY --from=builder /app/bin/server .
 
 # Set environment variables
 ENV DOMAIN=labstack.myaddr.io
