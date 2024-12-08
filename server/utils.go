@@ -2,10 +2,10 @@ package main
 
 import (
 	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"regexp"
 	"strings"
 )
@@ -26,18 +26,18 @@ func validate(subdomain string) error {
 	return nil
 }
 
+const letters = "abcdefghijklmnopqrstuvwxyz"
+
 func generateRandomString(length int) (string, error) {
-	// Mengalokasikan buffer byte
-	randomBytes := make([]byte, length)
-
-	// Mengisi buffer dengan data acak
-	_, err := rand.Read(randomBytes)
-	if err != nil {
-		return "", err
+	result := make([]byte, length)
+	for i := range result {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		if err != nil {
+			return "", err
+		}
+		result[i] = letters[num.Int64()]
 	}
-
-	// Mengubah byte menjadi string (base64 untuk representasi aman)
-	return base64.RawURLEncoding.EncodeToString(randomBytes)[:length], nil
+	return string(result), nil
 }
 
 func parseHost(r io.Reader) (string, []byte, error) {
@@ -47,7 +47,7 @@ func parseHost(r io.Reader) (string, []byte, error) {
 	if err != nil {
 		return "", buffer, err
 	}
-	
+
 	text := string(buffer)
 	left := strings.Index(text, "Host: ")
 	if left < 0 {

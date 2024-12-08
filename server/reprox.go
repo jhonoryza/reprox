@@ -87,7 +87,7 @@ func (r *Reprox) serveEventConn(conn net.Conn) error {
 		return events.WriteError(conn, "invalid protocol %s", request.Protocol)
 	}
 	if request.Subdomain == "" {
-		request.Subdomain, err = generateRandomString(5)
+		request.Subdomain, err = generateRandomString(10)
 		if err != nil {
 			return err
 		}
