@@ -8,6 +8,8 @@ website to the world
 
 you can self hosted the server app using your own domain
 
+![general flow](./general-flow.png)
+
 ## Requirement
 
 - domain or get a [free domain here](./FREE_DOMAIN.md)
