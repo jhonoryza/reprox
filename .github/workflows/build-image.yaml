@@ -43,7 +43,7 @@ jobs:
           file: ./server.Dockerfile
 
       # Build Client Image
-      - name: Build Server Image
+      - name: Build Client Image
         uses: docker/build-push-action@v5
         with:
           push: true
