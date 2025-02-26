@@ -23,7 +23,49 @@ more detail [here](./FLOW.md)
 
 ## How to use
 
-### Preparation
+### Using Docker (Recommended)
+
+- [Docker Image](https://hub.docker.com/repository/docker/jhonoryza/reprox)
+
+- running server
+```bash
+docker run --rm --network host -d jhonoryza/reprox:server-linux-amd64
+```
+
+- running client
+```bash
+docker run --rm --network host -d jhonoryza/reprox:client-linux-amd64
+```
+
+- check `docker-compose.yml` file
+
+```yaml
+services:
+  client:
+    image: jhonoryza/reprox:client-linux-amd64
+    container_name: reprox_client
+    restart: unless-stopped
+    command: /app/client tcp -p 5432 -s "pgsql"
+    environment:
+      DOMAIN: "oracle.labkita.my.id"
+      DOMAIN_EVENT: "oracle.labkita.my.id:4321"
+    network_mode: "host"
+
+  server:
+    image: jhonoryza/reprox:server-linux-amd64
+    container_name: reprox_server
+    restart: unless-stopped
+    environment:
+      DOMAIN: "oracle.labkita.my.id"
+      DOMAIN_EVENT: "oracle.labkita.my.id:4321"
+    network_mode: "host"
+```
+
+- run `docker compose up -d server` on server machine
+
+- run `docke compose up -d client` on client machine
+
+### Manual
 
 - if you are using linux you can add to `/etc/environment` file
 - or just in terminal run export ...
@@ -153,14 +195,6 @@ Exposing directory static files using built-in HTTP Server
 ```
 
 Press Ctrl+C to stop
-
-## Docker Image
-
-- [https://hub.docker.com/repository/docker/jhonoryza/reprox](https://hub.docker.com/repository/docker/jhonoryza/reprox)
-
-```bash
-docker run --rm --network host -d jhonoryza/reprox:linux-amd64
-```
 
 ## Security
 

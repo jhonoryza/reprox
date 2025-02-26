@@ -1,0 +1,19 @@
+services:
+  client:
+    image: jhonoryza/reprox:client-linux-amd64
+    container_name: reprox_client
+    restart: unless-stopped
+    command: /app/client tcp -p 5432 -s "pgsql"
+    environment:
+      DOMAIN: "oracle.labkita.my.id"
+      DOMAIN_EVENT: "oracle.labkita.my.id:4321"
+    network_mode: "host"
+
+  server:
+    image: jhonoryza/reprox:server-linux-amd64
+    container_name: reprox_server
+    restart: unless-stopped
+    environment:
+      DOMAIN: "oracle.labkita.my.id"
+      DOMAIN_EVENT: "oracle.labkita.my.id:4321"
+    network_mode: "host"
