@@ -5,8 +5,8 @@ services:
     restart: unless-stopped
     command: /app/client tcp -p 5432 -s "pgsql"
     environment:
-      DOMAIN: "oracle.labkita.my.id"
-      DOMAIN_EVENT: "oracle.labkita.my.id:4321"
+      DOMAIN: ${DOMAIN_NAME}
+      DOMAIN_EVENT: ${DOMAIN_EVENT}
     network_mode: "host"
 
   server:
@@ -14,6 +14,6 @@ services:
     container_name: reprox_server
     restart: unless-stopped
     environment:
-      DOMAIN: "oracle.labkita.my.id"
-      DOMAIN_EVENT: "oracle.labkita.my.id:4321"
+      DOMAIN: ${DOMAIN_NAME}
+      DOMAIN_EVENT: ${DOMAIN_EVENT}
     network_mode: "host"

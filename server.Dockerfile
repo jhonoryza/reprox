@@ -21,10 +21,6 @@ WORKDIR /app/
 # Copy the compiled binary from the builder
 COPY --from=builder /app/server-cli .
 
-# Set environment variables
-ENV DOMAIN=oracle.labkita.my.id
-ENV DOMAIN_EVENT=oracle.labkita.my.id:4321
-
 # Expose default application port
 EXPOSE 80
 EXPOSE 443
