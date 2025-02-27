@@ -27,16 +27,6 @@ more detail [here](./FLOW.md)
 
 - [Docker Image](https://hub.docker.com/repository/docker/jhonoryza/reprox)
 
-- running server
-```bash
-docker run --rm --network host -d jhonoryza/reprox:server-linux-amd64
-```
-
-- running client
-```bash
-docker run --rm --network host -d jhonoryza/reprox:client-linux-amd64
-```
-
 - check `docker-compose.yml` file
 
 ```yaml
@@ -45,7 +35,7 @@ services:
     image: jhonoryza/reprox:client-linux-amd64
     container_name: reprox_client
     restart: unless-stopped
-    command: /app/client tcp -p 5432 -s "pgsql"
+    # command: /app/client tcp -p 5432 -s "pgsql"
     environment:
       DOMAIN: ${DOMAIN_NAME}
       DOMAIN_EVENT: ${DOMAIN_EVENT}
@@ -60,6 +50,8 @@ services:
       DOMAIN_EVENT: ${DOMAIN_EVENT}
     network_mode: "host"
 ```
+
+- set `command` in `docker-compose.yml` file with your custom command
 
 - copy `.env.example` to `.env`
 

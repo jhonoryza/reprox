@@ -3,7 +3,7 @@ services:
     image: jhonoryza/reprox:client-linux-amd64
     container_name: reprox_client
     restart: unless-stopped
-    command: /app/client tcp -p 5432 -s "pgsql"
+    # command: /app/client tcp -p 5432 -t 5433 -s "pgsql"
     environment:
       DOMAIN: ${DOMAIN_NAME}
       DOMAIN_EVENT: ${DOMAIN_EVENT}
