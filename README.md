@@ -35,7 +35,7 @@ services:
     image: jhonoryza/reprox:client-linux-amd64
     container_name: reprox_client
     restart: unless-stopped
-    # command: /app/client tcp -p 5432 -s "pgsql"
+    # command: /app/client-cli tcp -p 5432 -t 5433 -s "pgsql"
     environment:
       DOMAIN: ${DOMAIN_NAME}
       DOMAIN_EVENT: ${DOMAIN_EVENT}
@@ -45,6 +45,7 @@ services:
     image: jhonoryza/reprox:server-linux-amd64
     container_name: reprox_server
     restart: unless-stopped
+    # command: /app/server-cli
     environment:
       DOMAIN: ${DOMAIN_NAME}
       DOMAIN_EVENT: ${DOMAIN_EVENT}
@@ -52,6 +53,8 @@ services:
 ```
 
 - set `command` in `docker-compose.yml` file with your custom command
+
+- when using `host network_mode` it will expose PORT 80,443 & 4321 by default
 
 - copy `.env.example` to `.env`
 
