@@ -25,4 +25,4 @@ ENV DOMAIN=oracle.labkita.my.id
 ENV DOMAIN_EVENT=oracle.labkita.my.id:4321
 
 # Run the compiled server
-CMD ["/client", "tcp", "-p", "5432" ,"-s", "oracle"]
+CMD ["/client", "tcp", "-p", "5432", "-t", "5433" ,"-s", "pgsql"]
