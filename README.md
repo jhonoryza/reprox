@@ -64,6 +64,14 @@ services:
 
 - run `docke compose up -d client` on client machine
 
+- logging
+
+```bash
+docker logs -f reprox_client
+# or
+docker logs -f reprox_server
+```
+
 ### Manual
 
 - if you are using linux you can add to `/etc/environment` file
