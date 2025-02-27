@@ -18,11 +18,11 @@ type Client struct {
 	cname     string // example.com
 
 	localServer  string // localhost:localport
-	remoteServer string // remote domain private:remote port private
-	publicServer string // remote domain public: remote port public
+	remoteServer string // private 	-> remote domain:remote port
+	publicServer string // public 	-> remote domain:remote port
 }
 
-func (c *Client) Start(port uint16) {
+func (c *Client) Start(port uint16, targetPort uint16) {
 	eventConn, err := net.Dial("tcp", c.config.Events)
 	if err != nil {
 		log.Fatalf("failed to connect to event server: %s\n", err)
@@ -31,9 +31,10 @@ func (c *Client) Start(port uint16) {
 
 	request := events.Event[events.TunnelRequested]{
 		Data: &events.TunnelRequested{
-			Protocol:  c.protocol,
-			Subdomain: c.subdomain,
-			CanonName: c.cname,
+			Protocol:   c.protocol,
+			Subdomain:  c.subdomain,
+			CanonName:  c.cname,
+			TargetPort: targetPort,
 		},
 	}
 

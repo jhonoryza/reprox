@@ -22,7 +22,7 @@ type TCPTunnel struct {
 	initialBuffer map[uint16][]byte   // port and data
 }
 
-func NewTCP(hostname string, conn io.Writer) (*TCPTunnel, error) {
+func NewTCP(hostname string, conn io.Writer, port uint16) (*TCPTunnel, error) {
 	t := &TCPTunnel{
 		hostname:      hostname,
 		connPrivate:   conn,
@@ -35,7 +35,7 @@ func NewTCP(hostname string, conn io.Writer) (*TCPTunnel, error) {
 		return t, fmt.Errorf("error init private server: %w", err)
 	}
 
-	err = t.tcpPublic.Listen(0, "tcp_tunnel_public_server")
+	err = t.tcpPublic.Listen(port, "tcp_tunnel_public_server")
 	if err != nil {
 		return t, fmt.Errorf("error init public server: %w", err)
 	}

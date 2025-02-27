@@ -86,6 +86,7 @@ const dateFormat = "2006/01/02 15:04:05"
 func (r *Reprox) serveEvent(conn net.Conn) error {
 	defer conn.Close()
 
+	// read events data
 	var event events.Event[events.TunnelRequested]
 	err := event.Read(conn)
 	if err != nil {
@@ -93,35 +94,49 @@ func (r *Reprox) serveEvent(conn net.Conn) error {
 	}
 
 	request := event.Data
+
+	// validate protocol
 	if request.Protocol != events.HTTP && request.Protocol != events.TCP {
 		return events.WriteError(conn, "invalid protocol %s", request.Protocol)
 	}
+
+	// generate if subdomain is not specified
 	if request.Subdomain == "" {
 		request.Subdomain, err = generateRandomString(10)
 		if err != nil {
 			return err
 		}
 	}
+
+	// subdomain validation
 	if err := validate(request.Subdomain); err != nil {
 		return events.WriteError(conn, "invalid subdomain %s: %s", request.Subdomain, err.Error())
 	}
+
+	// hostname parsing
 	hostname := fmt.Sprintf("%s.%s", request.Subdomain, r.config.DomainName)
 	if _, ok := r.httpMap[hostname]; ok {
 		return events.WriteError(conn, "subdomain is busy: %s, try another one", request.Subdomain)
 	}
+
+	// cname parsing
 	cname := request.CanonName
 	if _, ok := r.cnameMap[cname]; ok && cname != "" {
 		return events.WriteError(conn, "cname is busy: %s, try another one", request.CanonName)
 	}
 
 	if request.Protocol == events.TCP {
-		return r.createNewTCPTunnel(hostname, conn)
+		return r.createNewTCPTunnel(hostname, conn, request.TargetPort)
 	}
 
 	return r.createNewHTTPTunnel(hostname, cname, conn)
 }
 
-func (r *Reprox) createNewHTTPTunnel(hostname string, cname string, conn net.Conn) error {
+func (r *Reprox) createNewHTTPTunnel(
+	hostname string,
+	cname string,
+	conn net.Conn,
+) error {
 	tn, err := NewHTTP(hostname, conn)
 	if err != nil {
 		return events.WriteError(conn, "failed to create http tunnel", err.Error())
@@ -164,8 +179,8 @@ func (r *Reprox) createNewHTTPTunnel(hostname string, cname string, conn net.Con
 	return nil
 }
 
-func (r *Reprox) createNewTCPTunnel(hostname string, conn net.Conn) error {
-	tn, err := NewTCP(hostname, conn)
+func (r *Reprox) createNewTCPTunnel(hostname string, conn net.Conn, port uint16) error {
+	tn, err := NewTCP(hostname, conn, port)
 	if err != nil {
 		return events.WriteError(conn, "failed to create tcp tunnel", err.Error())
 	}

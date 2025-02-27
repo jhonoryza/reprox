@@ -20,9 +20,10 @@ type EventType interface {
 }
 
 type TunnelRequested struct {
-	Protocol  string
-	Subdomain string
-	CanonName string
+	Protocol   string
+	Subdomain  string
+	CanonName  string
+	TargetPort uint16
 }
 
 type TunnelOpened struct {
