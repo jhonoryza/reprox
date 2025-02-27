@@ -10,7 +10,7 @@ COPY . .
 # Build the Go application for specified architecture
 ARG GOOS
 ARG GOARCH
-RUN GOOS=$GOOS GOARCH=$GOARCH go build -ldflags '-s -w' -o client client/*.go
+RUN GOOS=$GOOS GOARCH=$GOARCH go build -ldflags '-s -w' -o client-cli client/*.go
 
 # Set the working directory
 FROM ubuntu:24.04
@@ -18,7 +18,7 @@ FROM ubuntu:24.04
 WORKDIR /app
 
 # Copy the compiled binary from the builder
-COPY --from=builder /app/client .
+COPY --from=builder /app/client-cli .
 
 # Run the compiled server
-CMD ["/client", "tcp", "-p", "5432", "-t", "5433" ,"-s", "pgsql"]
+CMD ["./client-cli", "tcp", "-p", "5432", "-t", "5433" ,"-s", "pgsql"]
