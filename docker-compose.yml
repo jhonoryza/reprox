@@ -7,6 +7,8 @@ services:
     environment:
       DOMAIN: ${DOMAIN_NAME}
       DOMAIN_EVENT: ${DOMAIN_EVENT}
+      HTTP_PORT: ${HTTP_PORT}
+      HTTPS_PORT: ${HTTPS_PORT}      
     network_mode: "host"
 
   server:
@@ -17,4 +19,6 @@ services:
     environment:
       DOMAIN: ${DOMAIN_NAME}
       DOMAIN_EVENT: ${DOMAIN_EVENT}
+      HTTP_PORT: ${HTTP_PORT}
+      HTTPS_PORT: ${HTTPS_PORT}      
     network_mode: "host"
