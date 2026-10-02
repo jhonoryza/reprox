@@ -247,6 +247,7 @@ func (r *Reprox) serveHttp(conn net.Conn) error {
 		writeResponse(conn, 400, "Bad Request", "Bad Request")
 		return nil
 	}
+	host = stripPort(host)
 	tunnelHost, ok := r.cnameMap[host]
 	if ok && tunnelHost != "" {
 		host = tunnelHost
