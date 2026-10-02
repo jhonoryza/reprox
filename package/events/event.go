@@ -97,10 +97,10 @@ func (e *Event[EventType]) Write(conn io.Writer) error {
 	return err
 }
 
-func WriteError(conn io.Writer, message string, args ...string) error {
+func WriteError(conn io.Writer, message string, args ...any) error {
 	event := Event[TunnelOpened]{
 		Data: &TunnelOpened{
-			ErrorMessage: fmt.Sprintf(message, args),
+			ErrorMessage: fmt.Sprintf(message, args...),
 		},
 	}
 
