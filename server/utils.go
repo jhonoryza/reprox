@@ -7,11 +7,25 @@ import (
 	"io"
 	"math/big"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
 var regex = regexp.MustCompile(`^[a-z\d](?:[a-z\d]|-[a-z\d]){0,38}$`)
 var blockList = map[string]bool{"www": true}
+
+// stripPort removes a trailing :port from a Host header value. Browsers
+// include the port for non-standard ports (e.g. example.com:4000), but
+// tunnels are registered by bare hostname, so the port must be dropped
+// before the tunnel lookup.
+func stripPort(host string) string {
+	if i := strings.LastIndex(host, ":"); i >= 0 {
+		if _, err := strconv.Atoi(host[i+1:]); err == nil {
+			return host[:i]
+		}
+	}
+	return host
+}
 
 func validate(subdomain string) error {
 	if len(subdomain) > 38 || len(subdomain) < 3 {
