@@ -203,6 +203,43 @@ Exposing directory static files using built-in HTTP Server
 
 Press Ctrl+C to stop
 
+### WebSocket Transport (for restrictive networks)
+
+If the client runs behind a firewall that blocks raw TCP egress (only
+HTTP/HTTPS proxy allowed), the tunnel can run on top of WebSocket instead.
+The gob event protocol is unchanged; it is just carried over websocket
+binary messages.
+
+No extra server configuration is needed: the websocket endpoints are served
+automatically on the existing HTTP(S) listener:
+
+- `GET /_reprox/event` — replaces the raw TCP event channel (port 4321)
+- `GET /_reprox/data` — replaces the raw TCP private data channel
+
+On the client, set `DOMAIN_EVENT` to a `ws://` or `wss://` URL:
+
+```bash
+export DOMAIN=reprox.example.com
+export DOMAIN_EVENT=ws://reprox.example.com:4000/_reprox/event
+./bin/client-linux-amd64 http -p 3000 -s mysubdomain
+```
+
+or with TLS (requires `TLS_PATH_CERT` / `TLS_PATH_KEY` on the server):
+
+```bash
+export DOMAIN_EVENT=wss://reprox.example.com:4001/_reprox/event
+```
+
+The client honors the standard `HTTP_PROXY` / `HTTPS_PROXY` environment
+variables when dialing, so it works through egress proxies.
+
+Limitations:
+
+- only `http` tunnels are supported over websocket for now; requesting a
+  `tcp` tunnel over a websocket event channel is rejected with a clear error
+- paths starting with `/_reprox/` on the HTTP listener are reserved for the
+  transport and are not forwarded to tunnels
+
 ## Security
 
 If you discover any security related issues, please create an issue.

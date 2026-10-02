@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jhonoryza/reprox/package/events"
+	"github.com/jhonoryza/reprox/package/ws"
 )
 
 type Reprox struct {
@@ -100,6 +102,12 @@ func (r *Reprox) serveEvent(conn net.Conn) error {
 		return events.WriteError(conn, "invalid protocol %s", request.Protocol)
 	}
 
+	// tcp tunnels rely on raw TCP data channels which don't exist on the
+	// websocket transport; reject early with a clear message.
+	if ws.IsWSConn(conn) && request.Protocol == events.TCP {
+		return events.WriteError(conn, "tcp tunnel is not supported over websocket transport, use http")
+	}
+
 	// generate if subdomain is not specified
 	if request.Subdomain == "" {
 		request.Subdomain, err = generateRandomString(10)
@@ -139,7 +147,7 @@ func (r *Reprox) createNewHTTPTunnel(
 ) error {
 	tn, err := NewHTTP(hostname, conn)
 	if err != nil {
-		return events.WriteError(conn, "failed to create http tunnel", err.Error())
+		return events.WriteError(conn, "failed to create http tunnel: %s", err.Error())
 	}
 	r.cnameMap[cname] = hostname
 	r.httpMap[hostname] = tn
@@ -182,7 +190,7 @@ func (r *Reprox) createNewHTTPTunnel(
 func (r *Reprox) createNewTCPTunnel(hostname string, conn net.Conn, port uint16) error {
 	tn, err := NewTCP(hostname, conn, port)
 	if err != nil {
-		return events.WriteError(conn, "failed to create tcp tunnel", err.Error())
+		return events.WriteError(conn, "failed to create tcp tunnel: %s", err.Error())
 	}
 	r.tcpMap[tn.PublicServerPort()] = tn
 	defer delete(r.tcpMap, tn.PublicServerPort())
@@ -221,8 +229,20 @@ func (r *Reprox) createNewTCPTunnel(hostname string, conn net.Conn, port uint16)
 }
 
 func (r *Reprox) serveHttp(conn net.Conn) error {
-	_ = conn.SetReadDeadline(time.Now().Add(time.Second * 3))
-	host, buffer, err := parseHost(conn)
+	head, err := readHTTPHead(conn)
+	if err != nil {
+		writeResponse(conn, 400, "Bad Request", "Bad Request")
+		return nil
+	}
+
+	// websocket transport for clients behind restrictive egress firewalls.
+	// handled before host routing; the gob event protocol runs unchanged
+	// on top of websocket binary messages.
+	if strings.HasPrefix(string(head), "GET /_reprox/") {
+		return r.serveReproxWS(conn, head)
+	}
+
+	host, _, err := parseHost(bytes.NewReader(head))
 	if err != nil || host == "" {
 		writeResponse(conn, 400, "Bad Request", "Bad Request")
 		return nil
@@ -237,5 +257,5 @@ func (r *Reprox) serveHttp(conn net.Conn) error {
 		writeResponse(conn, 400, "Not Found", "tunnel not found")
 		return fmt.Errorf("unknown host requested %s", host)
 	}
-	return tunnel.publicHandler(conn, buffer)
+	return tunnel.publicHandler(conn, head)
 }
